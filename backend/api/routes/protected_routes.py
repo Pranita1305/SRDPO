@@ -53,3 +53,28 @@ async def get_zone_heatmap(user=Depends(get_current_user)):
     if cached_data:
         return json.loads(cached_data)
     return {"message": "No cached heatmap found"}
+
+
+from fastapi import APIRouter, Depends, HTTPException
+from backend.auth.dependencies import get_current_user
+from backend.db.mongo_setup import db
+
+router = APIRouter(prefix="/protected", tags=["Protected Routes"])
+
+
+@router.get("/predictions")
+async def get_predictions(user=Depends(get_current_user)):
+    if user['role'] not in ["admin", "analyst"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    predictions = list(db.ride_demand_predictions.find({}, {"_id": 0}))
+    return {"predictions": predictions}
+
+
+@router.get("/surge-alerts")
+async def get_surge_alerts(user=Depends(get_current_user)):
+    if user['role'] != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can view surge alerts")
+
+    alerts = list(db.surge_alerts.find({}, {"_id": 0}))
+    return {"alerts": alerts}
